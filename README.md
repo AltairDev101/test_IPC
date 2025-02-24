@@ -5,7 +5,7 @@
 - It is capable of establishing bidirectional communication with other applications.
 - It supports synchronization.
 - It is easy to configure and use.
-- 
+  
 ## Why `message queue` and `mutex` was chosen for synchronization threads
 -It provides a simple way to organize a queue for sequential processing of messages.
 
