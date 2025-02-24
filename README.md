@@ -1,5 +1,3 @@
-# Readme.md
-
 ## Why `NamePipe` was chosen for IPC
 - Small data volumes (1 string up to 10 characters) and a low message frequency (1-2 times per second).
 - It is capable of establishing bidirectional communication with other applications.
