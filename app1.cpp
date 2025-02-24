@@ -25,7 +25,7 @@ public:
     }
 
 	void send_string(const string &str){
-		int fd = open(pipe1, O_CREAT | O_WRONLY);
+		int fd = open(pipe1, O_CREAT | O_WRONLY, 0666);
 		if((fd == -1) && (errno != EEXIST)){			
 			throw::runtime_error("Failed to open pipe1 on write " + std::string(strerror(errno)));
 		}
@@ -61,17 +61,19 @@ class WriterString
 public:
 	WriterString(NamePipe &p) : pipe(p) {}
 	void run(){
+		cout<<"Application1 running"<<endl;
 		while (true) {
 			try{
 				string input;
 				cout << "Enter a string or empty to exit: ";
 				getline(cin, input);
-
+        
+				pipe.send_string(input);
+				
 				if (input.empty()) {
 				   cout << "Exiting..." << endl;
 				   break;
-				}	        
-				pipe.send_string(input);
+				}	
 
 				pipe.receive_string();
 			}catch(const exception &e){

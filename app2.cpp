@@ -44,6 +44,17 @@ struct MessageInfo {
     }
 };
 
+class Logger {
+public:
+    static void log(const MessageInfo& msg_info) {        
+        lock_guard<mutex> lock(log_mutex);
+        ofstream log(LOG_FILE, ios::app);
+        log << "[" << msg_info.get_receive_time_str() << "] "
+            << "Original: " << msg_info.original_msg
+            << " | Processing time (ticks): " << msg_info.get_process_time_str() << endl;
+    }
+};
+
 class NamePipe{
 public:
 	NamePipe()
@@ -57,7 +68,7 @@ public:
 	}
 
 	void send_string(const string &str){
-		int fd = open(pipe2, O_CREAT | O_WRONLY);
+		int fd = open(pipe2, O_CREAT | O_WRONLY, 0666);
 		if((fd == -1) && (errno != EEXIST)){			
 			throw::runtime_error("Failed to open pipe2 on write " + std::string(strerror(errno)));
 		}
@@ -65,15 +76,16 @@ public:
 		close(fd);
 	}
 
-	string receive_string(void){
+	string receive_string(){
 		char buffer[128];
+		string ret;
 		cout << "Listnening app1..." << endl;
 		int fd = open(pipe1, O_RDONLY);				
 		if((fd == -1) && (errno != EEXIST)){
 			throw::runtime_error("Failed to open pipe1 on read: " + std::string(strerror(errno)));	
-		}
+		}		
 		memset(buffer,0,sizeof(buffer));
-		int nbytes = read(fd, buffer, sizeof(buffer));
+		int nbytes = read(fd, buffer, sizeof(buffer));		
 		if(nbytes>0){
 			cout<< "receiving: " << string(buffer) << endl;
 		}
@@ -89,23 +101,13 @@ public:
 	}
 };
 
-class Logger {
-public:
-    static void log(const MessageInfo& msg_info) {        
-        lock_guard<mutex> lock(log_mutex);
-        ofstream log(LOG_FILE, ios::app);
-        log << "[" << msg_info.get_receive_time_str() << "] "
-            << "Original: " << msg_info.original_msg
-            << " | Processing time (ticks): " << msg_info.get_process_time_str() << endl;
-    }
-};
-
 class MessageHandler{
 public:
 	MessageHandler(NamePipe &p) : pipe(p) {
 		work = true;
 	}
 	void run(){
+		cout<<"Application2 running"<<endl;
 		thread receive_thread(&MessageHandler::receive_message, this);
 		thread process_thread(&MessageHandler::process_message, this);		
 
@@ -119,12 +121,12 @@ private:
 
 	void receive_message(){
 		while(1){
-			try{
-				cout<<"Enter receiving..."<<endl;
-				string msg = pipe.receive_string();
+			try{				
+				string msg = pipe.receive_string();				
 				if(msg.empty()){
-					cout << "Received empty message. Exiting application." <<endl;
+					cout << "Received empty message. Exiting app2 ..." <<endl;
 					work = false;
+					cv.notify_one();
 					break;
 				}
 
@@ -132,7 +134,7 @@ private:
 				msg_info.original_msg = msg;
 				msg_info.receive_time = chrono::system_clock::now();
 
-				{
+				{					
 					lock_guard<mutex> lock(queue_mutex);
 					message_queue.push(msg_info);
 				}
@@ -152,7 +154,9 @@ private:
 			{
 				unique_lock<mutex> lock(queue_mutex);
 				cv.wait(lock, [this] { return (!message_queue.empty() || !work); });
-				
+				if(!work){
+					break;
+				}
 				msg_info = message_queue.front();
 				message_queue.pop();
 			}
