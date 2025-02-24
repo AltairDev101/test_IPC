@@ -11,8 +11,6 @@
 
 ## How to Build and Run
 ````
-```markdown
-```bash
 - mkdir build
 - cd build
 - cmake ..
