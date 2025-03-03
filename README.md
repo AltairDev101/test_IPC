@@ -13,4 +13,5 @@
 - cd build
 - cmake ..
 - cmake --build .
+- ./run_stop.sh start
 
